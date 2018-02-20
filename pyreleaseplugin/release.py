@@ -81,8 +81,7 @@ def update_version_file(filename, new_version):
 
     return new_version
 
-
-def bump_patch_version(version):
+def bump_version(version, component_index):
     """
     Increment the patch version.
 
@@ -90,10 +89,18 @@ def bump_patch_version(version):
         version (str): The version to bump
     """
     parts = [int(x) for x in version.split('.')]
-    parts[2] += 1
+    parts[component_index] += 1
 
     return '.'.join([str(x) for x in parts])
 
+def bump_patch_version(version):
+    return bump_version(version, 2)
+
+def bump_minor_version(version):
+    return bump_version(version, 1)
+
+def bump_major_version(version):
+    return bump_version(version, 0)
 
 RELEASE_LINE_RE = re.compile("^([^\s]+) \(([^\)]+)\)$")
 
@@ -204,7 +211,7 @@ class ReleaseCommand(Command):
         ("version=", "v", "new version number"),
         ("description=", "d", "a description of the work done in the release"),
         ("version-file=", "f", "a Python file containing the module version number"),
-        ("changelog-file=", "f", "a Markdown file containing a log changes"),
+        #("changelog-file=", "f", "a Markdown file containing a log changes"),
         ("push-to-master=", "p", "whether the changes from this script should be pushed to master")
     ]
 
@@ -212,7 +219,7 @@ class ReleaseCommand(Command):
         self.old_version = None     # the previous version
         self.version = None         # the new version
         self.version_file = None    # the version file
-        self.changelog_file = None  # path to a changelog file
+        #self.changelog_file = None  # path to a changelog file
         self.description = None     # description text
         self.push_to_master = None  # whether to push to master
 
@@ -221,13 +228,13 @@ class ReleaseCommand(Command):
             raise IOError(
                 "Specified version file ({}) does not exist".format(self.version_file))
 
-        if not os.path.exists(self.changelog_file):
-            raise IOError(
-                "Specified changelog file ({}) does not exist".format(self.changelog_file))
+        # if not os.path.exists(self.changelog_file):
+        #     raise IOError(
+        #         "Specified changelog file ({}) does not exist".format(self.changelog_file))
 
         self.old_version = current_version_from_version_file(self.version_file)
         self.version = self.version or bump_patch_version(self.old_version)
-        self.description = clean_description(self.description) or get_description()
+        # self.description = clean_description(self.description) or get_description()
         self.push_to_master = True if self.push_to_master is not None else None
 
     def run(self):
@@ -241,7 +248,7 @@ class ReleaseCommand(Command):
         update_version_file(self.version_file, self.version)
 
         # update changelog
-        add_changelog_entry(self.changelog_file, self.version, self.description)
+        #add_changelog_entry(self.changelog_file, self.version, self.description)
 
         # commit changes
         commit_changes(self.version)
@@ -253,7 +260,7 @@ class ReleaseCommand(Command):
         # NOTE: this will push from the currently checked out branch to origin/master;
         # TODO: accommodate releases from other branches
         push_to_master = self.push_to_master or parse_y_n_response(
-            input("Would you like to push the changes to master? [y/n] ").strip())
+            raw_input("Would you like to push the changes to master? [y/n] ").strip())
 
         if push_to_master:
             print("Pushing changes to the master branch on Github")
@@ -261,4 +268,4 @@ class ReleaseCommand(Command):
 
         # build and publish
         build()
-        publish_to_pypi()
+        #publish_to_pypi()
