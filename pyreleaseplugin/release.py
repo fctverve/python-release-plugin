@@ -214,7 +214,8 @@ class ReleaseCommand(Command):
         ("version=", "v", "new version number"),
         ("description=", "d", "a description of the work done in the release"),
         ("version-file=", "f", "a Python file containing the module version number"),
-        ("push-to-master=", "p", "whether the changes from this script should be pushed to master")
+        ("push-to-branch=", "p", "whether the changes from this script should be pushed to master"),
+        ("branch=", "b", "target git branch where to push")
     ]
 
     def initialize_options(self):
@@ -222,7 +223,8 @@ class ReleaseCommand(Command):
         self.version = None         # the new version
         self.version_file = None    # the version file
         self.description = None     # description text
-        self.push_to_master = None  # whether to push to master
+        self.push_to_branch = None  # whether to push to branch
+        self.branch = None          # git branch where to push
 
     def finalize_options(self):
         if not os.path.exists(self.version_file):
@@ -231,7 +233,8 @@ class ReleaseCommand(Command):
 
         self.old_version = current_version_from_version_file(self.version_file)
         self.version = self.version or bump_minor_version(self.old_version)
-        self.push_to_master = True if self.push_to_master is not None else None
+        self.push_to_branch = True if self.push_to_branch is not None else None
+        self.branch = self.branch or 'master'
 
     def run(self):
         # fail fast if working tree is not clean
@@ -243,9 +246,6 @@ class ReleaseCommand(Command):
         # update version specifier in module
         update_version_file(self.version_file, self.version)
 
-        # update changelog
-        #add_changelog_entry(self.changelog_file, self.version, self.description)
-
         # commit changes
         commit_changes(self.version)
 
@@ -253,15 +253,12 @@ class ReleaseCommand(Command):
         tag(self.version)
 
         # push changes to Github
-        # NOTE: this will push from the currently checked out branch to origin/master;
-        # TODO: accommodate releases from other branches
-        push_to_master = self.push_to_master or parse_y_n_response(
+        push_to_branch = self.push_to_branch or parse_y_n_response(
             raw_input("Would you like to push the changes to master? [y/n] ").strip())
 
-        if push_to_master:
-            print("Pushing changes to the master branch on Github")
-            push("master")
+        if push_to_branch:
+            print("Pushing changes to the {} branch on Github".format(self.branch))
+            push(self.branch)
 
         # build and publish
         build()
-        #publish_to_pypi()
