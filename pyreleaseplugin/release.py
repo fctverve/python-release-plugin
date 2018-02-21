@@ -211,7 +211,6 @@ class ReleaseCommand(Command):
         ("version=", "v", "new version number"),
         ("description=", "d", "a description of the work done in the release"),
         ("version-file=", "f", "a Python file containing the module version number"),
-        #("changelog-file=", "f", "a Markdown file containing a log changes"),
         ("push-to-master=", "p", "whether the changes from this script should be pushed to master")
     ]
 
@@ -219,7 +218,6 @@ class ReleaseCommand(Command):
         self.old_version = None     # the previous version
         self.version = None         # the new version
         self.version_file = None    # the version file
-        #self.changelog_file = None  # path to a changelog file
         self.description = None     # description text
         self.push_to_master = None  # whether to push to master
 
@@ -228,13 +226,8 @@ class ReleaseCommand(Command):
             raise IOError(
                 "Specified version file ({}) does not exist".format(self.version_file))
 
-        # if not os.path.exists(self.changelog_file):
-        #     raise IOError(
-        #         "Specified changelog file ({}) does not exist".format(self.changelog_file))
-
         self.old_version = current_version_from_version_file(self.version_file)
-        self.version = self.version or bump_patch_version(self.old_version)
-        # self.description = clean_description(self.description) or get_description()
+        self.version = self.version or bump_minor_version(self.old_version)
         self.push_to_master = True if self.push_to_master is not None else None
 
     def run(self):
