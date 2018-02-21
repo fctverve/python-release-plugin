@@ -91,6 +91,9 @@ def bump_version(version, component_index):
     parts = [int(x) for x in version.split('.')]
     parts[component_index] += 1
 
+    for remaining_index in range(component_index+1, len(parts)):
+        parts[remaining_index] = 0
+
     return '.'.join([str(x) for x in parts])
 
 def bump_patch_version(version):
