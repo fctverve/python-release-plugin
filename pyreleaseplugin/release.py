@@ -166,11 +166,11 @@ def parse_y_n_response(response):
     return True if response.strip().lower() in ('y', 'yes') else False
 
 
-def build():
+def build(distribution):
     """
     Build a wheel distribution.
     """
-    code = Popen(["python", "setup.py", "clean", "bdist_wheel"]).wait()
+    code = Popen(["python", "setup.py", "clean", distribution]).wait()
     if code:
         raise RuntimeError("Error building wheel")
 
@@ -212,19 +212,21 @@ class ReleaseCommand(Command):
 
     user_options = [
         ("version=", "v", "new version number"),
-        ("description=", "d", "a description of the work done in the release"),
         ("version-file=", "f", "a Python file containing the module version number"),
+        ("branch=", "b", "target git branch where to push"),
         ("push-to-branch=", "p", "whether the changes from this script should be pushed to master"),
-        ("branch=", "b", "target git branch where to push")
+        ("release-type=", "t", "release type to perform"),
+        ("distribution-type=", "d", "distribution type to build")
     ]
 
     def initialize_options(self):
         self.old_version = None     # the previous version
         self.version = None         # the new version
         self.version_file = None    # the version file
-        self.description = None     # description text
-        self.push_to_branch = None  # whether to push to branch
         self.branch = None          # git branch where to push
+        self.push_to_branch = None  # whether to push to branch
+        self.release_type = None   # type of release (major, minor, patch)
+        self.distribution_type = None # type of distribution (bdist, bdist_wheel, sdist, etc)
 
     def finalize_options(self):
         if not os.path.exists(self.version_file):
@@ -232,9 +234,21 @@ class ReleaseCommand(Command):
                 "Specified version file ({}) does not exist".format(self.version_file))
 
         self.old_version = current_version_from_version_file(self.version_file)
-        self.version = self.version or bump_minor_version(self.old_version)
-        self.push_to_branch = True if self.push_to_branch is not None else None
         self.branch = self.branch or 'master'
+        self.push_to_branch = True if self.push_to_branch is not None and self.branch is not None else None
+        self.release_type = self.release_type or 'minor'
+
+        if self.version is None:
+            if self.release_type == 'minor':
+                self.version = bump_minor_version(self.old_version)
+            elif self.release_type == 'major':
+                self.version = bump_major_version(self.old_version)
+            elif self.release_type == 'patch':
+                self.version = bump_patch_version(self.old_version)
+            else:
+                raise RuntimeError("Invalid release type: {}".format(self.release_type))
+
+        self.distribution_type = self.distribution_type or 'bdist_wheel'
 
     def run(self):
         # fail fast if working tree is not clean
@@ -261,4 +275,4 @@ class ReleaseCommand(Command):
             push(self.branch)
 
         # build and publish
-        build()
+        build(self.distribution_type)
